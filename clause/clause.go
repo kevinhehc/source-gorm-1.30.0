@@ -2,9 +2,9 @@ package clause
 
 // Interface clause interface
 type Interface interface {
-	Name() string
-	Build(Builder)
-	MergeClause(*Clause)
+	Name() string        // clause 名称
+	Build(Builder)       // 生成对应的 sql 部分
+	MergeClause(*Clause) // 和同类 clause 合并
 }
 
 // ClauseBuilder clause builder, allows to customize how to build clause
