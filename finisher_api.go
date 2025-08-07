@@ -639,6 +639,10 @@ func (db *DB) Connection(fc func(tx *DB) error) (err error) {
 // Transaction start a transaction as a block, return error will rollback, otherwise to commit. Transaction executes an
 // arbitrary number of commands in fc within a transaction. On success the changes are committed; if an error occurs
 // they are rolled back.
+// 首先会调用 db.Begin(...) 方法启动事务，此时会克隆出一个带有事务属性的 DB 会话实例：tx
+// 以 tx 为入参，调用使用方传入的闭包函数 fc(tx)
+// 倘若 fc 执行成功，则自动为用户执行 tx.Commit() 操作
+// 倘若 fc 执行出错或者发生 panic，则会 defer 保证执行 tx.Rollback() 操作
 func (db *DB) Transaction(fc func(tx *DB) error, opts ...*sql.TxOptions) (err error) {
 	panicked := true
 
@@ -659,6 +663,7 @@ func (db *DB) Transaction(fc func(tx *DB) error, opts ...*sql.TxOptions) (err er
 		}
 		err = fc(db.Session(&Session{NewDB: db.clone == 1}))
 	} else {
+		// 开启事务
 		tx := db.Begin(opts...)
 		if tx.Error != nil {
 			return tx.Error
@@ -666,13 +671,16 @@ func (db *DB) Transaction(fc func(tx *DB) error, opts ...*sql.TxOptions) (err er
 
 		defer func() {
 			// Make sure to rollback when panic, Block error or Commit error
+			// 倘若发生错误或者 panic，则进行 rollback 回滚
 			if panicked || err != nil {
 				tx.Rollback()
 			}
 		}()
 
+		// 执行事务内的逻辑
 		if err = fc(tx); err == nil {
 			panicked = false
+			// 指定成功会进行 commit 操作
 			return tx.Commit().Error
 		}
 	}
@@ -682,6 +690,8 @@ func (db *DB) Transaction(fc func(tx *DB) error, opts ...*sql.TxOptions) (err er
 }
 
 // Begin begins a transaction with any transaction options opts
+// 对于 DB.Begin() 方法，在默认模式下会使用 database/sql 库下的 sql.DB.BeginTx 方法创建出一个 sql.Tx 对象，
+// 将其赋给当前事务会话 DB 的 statement.ConnPool 字段，以供后续使用
 func (db *DB) Begin(opts ...*sql.TxOptions) *DB {
 	var (
 		// clone statement
@@ -702,9 +712,14 @@ func (db *DB) Begin(opts ...*sql.TxOptions) *DB {
 	}
 
 	switch beginner := tx.Statement.ConnPool.(type) {
+	// 标准模式，会走到 sql.DB.BeginTX 方法
 	case TxBeginner:
+		// 创建好的 tx 赋给 statment.ConnPool
 		tx.Statement.ConnPool, err = beginner.BeginTx(ctx, opt)
+
+	// prepare 模式，会走到 PreparedStmtDB.BeginTx 方法中
 	case ConnPoolBeginner:
+		// 创建好的 tx 赋给 statment.ConnPool
 		tx.Statement.ConnPool, err = beginner.BeginTx(ctx, opt)
 	default:
 		err = ErrInvalidTransaction
@@ -718,7 +733,9 @@ func (db *DB) Begin(opts ...*sql.TxOptions) *DB {
 }
 
 // Commit commits the changes in a transaction
+// 执行事务提交操作：
 func (db *DB) Commit() *DB {
+	// 默认情况下，此处的 ConnPool 实现类为 database/sql.Tx
 	if committer, ok := db.Statement.ConnPool.(TxCommitter); ok && committer != nil && !reflect.ValueOf(committer).IsNil() {
 		db.AddError(committer.Commit())
 	} else {
@@ -728,7 +745,9 @@ func (db *DB) Commit() *DB {
 }
 
 // Rollback rollbacks the changes in a transaction
+// 执行事务回滚操作：
 func (db *DB) Rollback() *DB {
+	// 默认情况下，此处的 ConnPool 实现类为 database/sql.Tx
 	if committer, ok := db.Statement.ConnPool.(TxCommitter); ok && committer != nil {
 		if !reflect.ValueOf(committer).IsNil() {
 			db.AddError(committer.Rollback())
