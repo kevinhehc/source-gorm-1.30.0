@@ -61,6 +61,8 @@ var tableRegexp = regexp.MustCompile(`(?i)(?:.+? AS (\w+)\s*(?:$|,)|^\w+\s+(\w+)
 //
 //	// Get a user
 //	db.Table("users").Take(&result)
+//
+// 通过链式调用 DB.Table 方法，显式声明本次操作所针对的数据表，这种方式的优先级是最高的.
 func (db *DB) Table(name string, args ...interface{}) (tx *DB) {
 	tx = db.getInstance()
 	if strings.Contains(name, " ") || strings.Contains(name, "`") || len(args) > 0 {

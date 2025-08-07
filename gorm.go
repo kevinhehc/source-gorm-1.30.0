@@ -100,12 +100,19 @@ type Option interface {
 }
 
 // DB GORM DB definition
+// gorm 中定义的数据库类
+// 所有 orm 的思想
 type DB struct {
+	// 用户自定义的配置项
 	*Config
-	Error        error
+	// 一次会话执行过程中遇到的错误
+	Error error
+	// 该请求影响的行数
 	RowsAffected int64
-	Statement    *Statement
-	clone        int
+	// 一次会话的状态信息，比如请求和响应信息
+	Statement *Statement
+	// 会话被克隆的次数. 倘若 clone = 1，代表是始祖 DB 实例；倘若 clone > 1，代表是从始祖 DB 克隆出来的会话
+	clone int
 }
 
 // Session session config when create session with Session() method
@@ -382,6 +389,8 @@ func (db *DB) Callback() *callbacks {
 }
 
 // AddError add error to db
+// DB 类的 AddError 方法，用于在会话执行过程中抛出错误.
+// 一次会话在执行过程中可能会遇到多个错误，因此会通过 error wrapping 的方式，实现错误的拼接.
 func (db *DB) AddError(err error) error {
 	if err != nil {
 		if db.Config.TranslateError {
