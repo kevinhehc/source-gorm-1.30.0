@@ -21,57 +21,121 @@ const preparedStmtDBKey = "preparedStmt"
 type Config struct {
 	// GORM perform single create, update, delete operations in transactions by default to ensure database data integrity
 	// You can disable it by setting `SkipDefaultTransaction` to true
-	SkipDefaultTransaction    bool
+	// 会自动开启事务以保证数据一致性。将此项设置为 true 可以跳过这个默认行为，从而提升性能。
+	// 适合在你已确保业务逻辑中不会产生数据不一致问题的情况下使用。
+	SkipDefaultTransaction bool
+
+	// 如果事务在指定时间内未完成，将自动回滚。
 	DefaultTransactionTimeout time.Duration
 
 	// NamingStrategy tables, columns naming strategy
+	// NamingStrategy 命名策略，用于控制表名、列名等的生成规则。
+	// 可以通过此项自定义命名风格（如是否使用下划线，是否复数等）。
 	NamingStrategy schema.Namer
+
 	// FullSaveAssociations full save associations
+	// FullSaveAssociations 是否在保存数据时完整保存所有关联（如 has many、belongs to 等）。
+	// 默认为 false，只保存主数据。设为 true 会同步所有关联数据（包括更新、删除等）。
 	FullSaveAssociations bool
+
 	// Logger
+	// Logger 日志接口，允许设置日志记录器（如 GORM 自带的 logger.Default）。
+	// 可用于调试 SQL 语句、慢查询分析等。
 	Logger logger.Interface
+
 	// NowFunc the function to be used when creating a new timestamp
+	// NowFunc 获取当前时间的函数。GORM 在创建时间戳字段时调用该函数。
+	// 可自定义时间源（如用于模拟时间、统一时区等）。
 	NowFunc func() time.Time
+
 	// DryRun generate sql without execute
+	// DryRun 设置为 true 时不会实际执行 SQL，只生成 SQL 语句并返回结果。
+	// 通常用于调试或生成 SQL 脚本。
 	DryRun bool
+
 	// PrepareStmt executes the given query in cached statement
+	// PrepareStmt 启用预编译语句并缓存，可以提高数据库操作性能，尤其是批量操作时。
+	// 会使用数据库连接的预编译特性。
 	PrepareStmt bool
+
 	// PrepareStmt cache support LRU expired,
 	// default maxsize=int64 Max value and ttl=1h
+	// PrepareStmtMaxSize 设置缓存中最大预编译语句数量（LRU 缓存），超过则逐出最旧的。
+	// 默认是 int64 最大值。
 	PrepareStmtMaxSize int
-	PrepareStmtTTL     time.Duration
+
+	// PrepareStmtTTL 设置缓存中每个预编译语句的存活时间，默认是 1 小时。
+	PrepareStmtTTL time.Duration
 
 	// DisableAutomaticPing
+	// DisableAutomaticPing 禁用自动 ping 数据库（GORM 在启动时会尝试 ping 数据库）。
+	// 某些数据库或网络条件下可设置为 true 来跳过。
 	DisableAutomaticPing bool
+
 	// DisableForeignKeyConstraintWhenMigrating
+	// DisableForeignKeyConstraintWhenMigrating 在迁移（AutoMigrate）时禁用外键约束创建。
+	// 某些数据库或出于设计需要可以关闭外键。
 	DisableForeignKeyConstraintWhenMigrating bool
+
 	// IgnoreRelationshipsWhenMigrating
+	// IgnoreRelationshipsWhenMigrating 在迁移时忽略模型间的关联关系（不处理外键、联表等）。
+	// 对于不需要数据库层级关联的模型非常有用。
 	IgnoreRelationshipsWhenMigrating bool
+
 	// DisableNestedTransaction disable nested transaction
+	// DisableNestedTransaction 禁用嵌套事务（Nested Transaction）。
+	// 一些数据库不支持嵌套事务，或者你想手动控制事务嵌套逻辑时可以设置为 true。
 	DisableNestedTransaction bool
+
 	// AllowGlobalUpdate allow global update
 	// 倘若未启用 AllowGlobalUpdate 模式，则会校验使用方是否设置了 where 条件，
 	// 未设置会抛出 gorm.ErrMissingWhereClause 错误（对应 checkMissingWhereConditions() 方法）
 	AllowGlobalUpdate bool
+
 	// QueryFields executes the SQL query with all fields of the table
+	// QueryFields 查询时默认选择所有字段，即使只使用了部分字段。
+	// 可用于某些特定场景下避免字段缺失的问题。
 	QueryFields bool
+
 	// CreateBatchSize default create batch size
+	// CreateBatchSize 设置批量创建记录时的默认每批数量。
+	// 数据量大时建议设置为合适的值（如 100、500 等），以避免 SQL 长度超限。
 	CreateBatchSize int
+
 	// TranslateError enabling error translation
+	// TranslateError 启用数据库错误转换，例如将数据库唯一键冲突错误转换为更易理解的错误类型。
 	TranslateError bool
+
 	// PropagateUnscoped propagate Unscoped to every other nested statement
+	// PropagateUnscoped 当使用 Unscoped 时，是否将其传递给所有嵌套语句。
+	// 默认只对当前语句生效。设置为 true 可以使其全局生效。
 	PropagateUnscoped bool
 
 	// ClauseBuilders clause builder
+	// ClauseBuilders 子句构造器，用于自定义 SQL 中的子句构建方式。
+	// 高级功能，通常用于扩展 GORM 行为或定制 SQL。
 	ClauseBuilders map[string]clause.ClauseBuilder
+
 	// ConnPool db conn pool
+	// ConnPool 数据库连接池接口，GORM 使用它来管理数据库连接。
+	// 可设置为自定义的连接池以满足不同的连接策略。
 	ConnPool ConnPool
+
 	// Dialector database dialector
+	// Dialector 数据库方言定义，如 mysql、postgres、sqlite 等。
+	// GORM 根据 Dialector 确定如何与不同数据库交互。
 	Dialector
+
 	// Plugins registered plugins
+	// Plugins 已注册的插件集合，可用于扩展 GORM 功能（如审计、软删除增强等）。
 	Plugins map[string]Plugin
 
-	callbacks  *callbacks
+	// callbacks 回调链，GORM 的核心执行机制之一，处理生命周期中的各类钩子。
+	// 通常为内部使用，不建议修改。
+	callbacks *callbacks
+
+	// cacheStore 用于内部缓存，如 SQL 构造缓存、表结构缓存等。
+	// 类型为 sync.Map，线程安全。
 	cacheStore *sync.Map
 }
 
