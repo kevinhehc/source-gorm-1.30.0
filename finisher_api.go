@@ -441,6 +441,11 @@ func (db *DB) UpdateColumns(values interface{}) (tx *DB) {
 // Delete deletes value matching given conditions. If value contains primary key it is included in the conditions. If
 // value includes a deleted_at field, then Delete performs a soft delete instead by setting deleted_at with the current
 // time if null.
+// 通过 db.getInstance() 方法获取 db 的克隆实例
+// 通过 statement.AddClause(...) 方法追加使用方传入的条件 condition
+// 设置 statement dest 为使用方传入的 value
+// 获取 delete 类型的 processor
+// 执行 processor.Execute(...) 方法，遍历调用 fns 函数链
 func (db *DB) Delete(value interface{}, conds ...interface{}) (tx *DB) {
 	tx = db.getInstance()
 	if len(conds) > 0 {
