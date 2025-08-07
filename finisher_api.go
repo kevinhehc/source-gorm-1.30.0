@@ -418,6 +418,10 @@ func (db *DB) Update(column string, value interface{}) (tx *DB) {
 }
 
 // Updates updates attributes using callbacks. values must be a struct or map. Reference: https://gorm.io/docs/update.html#Update-Changed-Fields
+// 通过 db.getInstance() 方法获取 db 的克隆实例
+// 设置 statement dest 为使用方传入的 value
+// 获取 update 类型的 processor
+// 执行 processor.Execute(...) 方法，遍历调用 fns 函数链
 func (db *DB) Updates(values interface{}) (tx *DB) {
 	tx = db.getInstance()
 	tx.Statement.Dest = values

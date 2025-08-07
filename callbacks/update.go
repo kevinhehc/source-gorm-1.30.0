@@ -53,6 +53,10 @@ func BeforeUpdate(db *gorm.DB) {
 }
 
 // Update update hook
+// 调用 statement.Build(...) 方法，生成 sql
+// 和 Delete 流程类似，倘若未启用 AllowGlobalUpdate 模式，则会校验使用方是否设置了 where 条件，未设置会抛出 gorm.ErrMissingWhereClause 错误
+// 调用 connPool.ExecContext(...) 方法，执行 sql（默认情况下，此处会使用 database/sql 标准库的 db.ExecContext(...) 方法）
+// 调用 result.RowsAffected() 方法，获取到本次更新操作影响的行数
 func Update(config *Config) func(db *gorm.DB) {
 	supportReturning := utils.Contains(config.UpdateClauses, "RETURNING")
 
@@ -67,6 +71,7 @@ func Update(config *Config) func(db *gorm.DB) {
 			}
 		}
 
+		// 生成 sql
 		if db.Statement.SQL.Len() == 0 {
 			db.Statement.SQL.Grow(180)
 			db.Statement.AddClauseIfNotExists(clause.Update{})
@@ -82,6 +87,7 @@ func Update(config *Config) func(db *gorm.DB) {
 			db.Statement.Build(db.Statement.BuildClauses...)
 		}
 
+		// 校验 where 条件
 		checkMissingWhereConditions(db)
 
 		if !db.DryRun && db.Error == nil {
@@ -98,6 +104,7 @@ func Update(config *Config) func(db *gorm.DB) {
 					}
 				}
 			} else {
+				// 执行 sql
 				result, err := db.Statement.ConnPool.ExecContext(db.Statement.Context, db.Statement.SQL.String(), db.Statement.Vars...)
 
 				if db.AddError(err) == nil {
@@ -106,6 +113,7 @@ func Update(config *Config) func(db *gorm.DB) {
 
 				if db.Statement.Result != nil {
 					db.Statement.Result.Result = result
+					// 获取影响的行数
 					db.Statement.Result.RowsAffected = db.RowsAffected
 				}
 			}
