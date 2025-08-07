@@ -11,10 +11,13 @@ import (
 )
 
 type Stmt struct {
+	// database/sql 标准库下的 statement
 	*sql.Stmt
+	// 是否处于事务
 	Transaction bool
-	prepared    chan struct{}
-	prepareErr  error
+	// 标识当前 stmt 是否已初始化完成
+	prepared   chan struct{}
+	prepareErr error
 }
 
 func (stmt *Stmt) Error() error {
