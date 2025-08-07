@@ -5,6 +5,8 @@ import (
 )
 
 var (
+	// 在 Execute 方法中，还有一项很重要的事情，是根据 crud 的类型，获取 sql 拼接格式 clauses，
+	// 将其赋值到该 processor 的 BuildClauses 字段当中. crud 各类 clauses 格式展示如下
 	createClauses = []string{"INSERT", "VALUES", "ON CONFLICT"}
 	queryClauses  = []string{"SELECT", "FROM", "WHERE", "GROUP BY", "ORDER BY", "LIMIT", "FOR"}
 	updateClauses = []string{"UPDATE", "SET", "WHERE"}

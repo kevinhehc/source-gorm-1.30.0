@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm/utils"
 )
 
+// 各类 processor 的初始化
 func initializeCallbacks(db *DB) *callbacks {
 	return &callbacks{
 		processors: map[string]*processor{
@@ -27,12 +28,20 @@ func initializeCallbacks(db *DB) *callbacks {
 
 // callbacks gorm callbacks manager
 type callbacks struct {
+	// 对应存储了 crud 等各类操作对应的执行器 processor
+	// query -> query processor
+	// create -> create processor
+	// update -> update processor
+	// delete -> delete processor
 	processors map[string]*processor
 }
 
 type processor struct {
-	db        *DB
-	Clauses   []string
+	// 从属的 DB 实例
+	db *DB
+	// 拼接 sql 时的关键字顺序. 比如 query 类，固定为 SELECT,FROM,WHERE,GROUP BY, ORDER BY, LIMIT, FOR
+	Clauses []string
+	// 对应于 crud 类型的执行函数链
 	fns       []func(*DB)
 	callbacks []*callback
 }
@@ -72,6 +81,8 @@ func (cs *callbacks) Raw() *processor {
 	return cs.processors["raw"]
 }
 
+// Execute
+// 通用的 processor 执行函数，其中对应于 crud 的核心操作都被封装在 processor 对应的 fns list 当中了
 func (p *processor) Execute(db *DB) *DB {
 	// call scopes
 	for len(db.Statement.scopes) > 0 {
@@ -85,6 +96,7 @@ func (p *processor) Execute(db *DB) *DB {
 	)
 
 	if len(stmt.BuildClauses) == 0 {
+		// 根据 crud 类型，对 buildClauses 进行复制，用于后续的 sql 拼接
 		stmt.BuildClauses = p.Clauses
 		resetBuildClauses = true
 	}
@@ -94,6 +106,7 @@ func (p *processor) Execute(db *DB) *DB {
 	}
 
 	// assign model values
+	// dest 和 model 相互赋值
 	if stmt.Model == nil {
 		stmt.Model = stmt.Dest
 	} else if stmt.Dest == nil {
@@ -101,6 +114,7 @@ func (p *processor) Execute(db *DB) *DB {
 	}
 
 	// parse model values
+	// 解析 model，获取对应表的 schema 信息
 	if stmt.Model != nil {
 		if err := stmt.Parse(stmt.Model); err != nil && (!errors.Is(err, schema.ErrUnsupportedDataType) || (stmt.Table == "" && stmt.TableExpr == nil && stmt.SQL.Len() == 0)) {
 			if errors.Is(err, schema.ErrUnsupportedDataType) && stmt.Table == "" && stmt.TableExpr == nil {
@@ -112,6 +126,7 @@ func (p *processor) Execute(db *DB) *DB {
 	}
 
 	// assign stmt.ReflectValue
+	// 处理 dest 信息，将其添加到 stmt 当中
 	if stmt.Dest != nil {
 		stmt.ReflectValue = reflect.ValueOf(stmt.Dest)
 		for stmt.ReflectValue.Kind() == reflect.Ptr {
@@ -126,6 +141,7 @@ func (p *processor) Execute(db *DB) *DB {
 		}
 	}
 
+	// 执行一系列的 callback 函数，其中最核心的 create/query/update/delete 操作都被包含在其中了
 	for _, f := range p.fns {
 		f(db)
 	}
