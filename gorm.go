@@ -435,6 +435,7 @@ func (db *DB) getInstance() *DB {
 	if db.clone > 0 {
 		tx := &DB{Config: db.Config, Error: db.Error}
 
+		// 倘若是首次对 db 进行 clone，则需要构造出一个新的 statement 实例
 		if db.clone == 1 {
 			// clone with new statement
 			tx.Statement = &Statement{
@@ -450,6 +451,7 @@ func (db *DB) getInstance() *DB {
 			}
 		} else {
 			// with clone statement
+			// 倘若已经 db clone 过了，则还需要 clone 原先的 statement
 			tx.Statement = db.Statement.clone()
 			tx.Statement.DB = tx
 		}
