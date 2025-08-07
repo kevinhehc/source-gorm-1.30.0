@@ -123,6 +123,11 @@ const (
 )
 
 // Scan scan rows into db statement
+// 是将查询结果数据反序列化到 dest 当中
+// 通过对 statement 中的 dest 进行分类，采取的不同的处理方式
+// 核心方法都是通过 rows.Scan(...) 方法，将响应数据反序列化到 dest 当中
+// 调用 rows.Err() 方法，抛出请求过程中遇到的错误
+// 倘若启用了 RaiseErrorOnNotFound 模式且查询到的行数为 0，则抛出错误 ErrRecordNotFound
 func Scan(rows Rows, db *DB, mode ScanMode) {
 	var (
 		columns, _          = rows.Columns()
@@ -141,8 +146,10 @@ func Scan(rows Rows, db *DB, mode ScanMode) {
 		}
 	}
 
+	// 影响的行数
 	db.RowsAffected = 0
 
+	// 根据 dest 类型进行断言分配
 	switch dest := db.Statement.Dest.(type) {
 	case map[string]interface{}, *map[string]interface{}:
 		if initialized || rows.Next() {
@@ -150,6 +157,7 @@ func Scan(rows Rows, db *DB, mode ScanMode) {
 			prepareValues(values, db, columnTypes, columns)
 
 			db.RowsAffected++
+			// 扫描数据的核心在于，调用 rows
 			db.AddError(rows.Scan(values...))
 
 			mapValue, ok := dest.(map[string]interface{})
@@ -355,10 +363,12 @@ func Scan(rows Rows, db *DB, mode ScanMode) {
 				db.scanIntoStruct(rows, reflectValue, values, fields, joinFields)
 			}
 		default:
+			// 根据 dest 类型进行前处理 ...
 			db.AddError(rows.Scan(dest))
 		}
 	}
 
+	// 倘若 rows 中存在错误，需要抛出
 	if err := rows.Err(); err != nil && err != db.Error {
 		db.AddError(err)
 	}
