@@ -233,6 +233,7 @@ func AfterCreate(db *gorm.DB) {
 }
 
 // ConvertToCreateValues convert to create values
+// 构建sql
 func ConvertToCreateValues(stmt *gorm.Statement) (values clause.Values) {
 	curTime := stmt.DB.NowFunc()
 

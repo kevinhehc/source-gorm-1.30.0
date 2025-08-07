@@ -23,6 +23,8 @@ func BeforeDelete(db *gorm.DB) {
 	}
 }
 
+// DeleteBeforeAssociations
+// 构建sql
 func DeleteBeforeAssociations(db *gorm.DB) {
 	if db.Error == nil && db.Statement.Schema != nil {
 		selectColumns, restricted := db.Statement.SelectAndOmitColumns(true, false)

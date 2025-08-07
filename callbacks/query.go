@@ -33,6 +33,8 @@ func Query(db *gorm.DB) {
 	}
 }
 
+// BuildQuerySQL
+// 构建sql
 func BuildQuerySQL(db *gorm.DB) {
 	if db.Statement.Schema != nil {
 		for _, c := range db.Statement.Schema.QueryClauses {

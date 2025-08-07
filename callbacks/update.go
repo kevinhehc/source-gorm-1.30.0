@@ -137,6 +137,7 @@ func AfterUpdate(db *gorm.DB) {
 }
 
 // ConvertToAssignments convert to update assignments
+// 构建sql
 func ConvertToAssignments(stmt *gorm.Statement) (set clause.Set) {
 	var (
 		selectColumns, restricted = stmt.SelectAndOmitColumns(false, true)
