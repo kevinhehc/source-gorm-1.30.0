@@ -67,9 +67,14 @@ func (db *PreparedStmtDB) Reset() {
 	db.Close()
 }
 
+// 加读锁，然后以 sql 模板为 key，尝试从 db.Stmts map 中获取 stmt 复用
+// 倘若 stmt 不存在，则加写锁 double check
+// 调用 conn.PrepareContext(...) 方法，创建新的 stmt，并存放到 map 中供后续复用
 func (db *PreparedStmtDB) prepare(ctx context.Context, conn ConnPool, isTransaction bool, query string) (_ *stmt_store.Stmt, err error) {
+	// 并发场景下，只允许有一个 goroutine 完成 stmt 的初始化操作
 	db.Mux.RLock()
 	if db.Stmts != nil {
+		// 以 sql 模板为 key，优先复用已有的 stmt
 		if stmt, ok := db.Stmts.Get(query); ok && (!stmt.Transaction || isTransaction) {
 			db.Mux.RUnlock()
 			return stmt, stmt.Error()
@@ -78,6 +83,7 @@ func (db *PreparedStmtDB) prepare(ctx context.Context, conn ConnPool, isTransact
 	db.Mux.RUnlock()
 
 	// retry
+	// 加锁 double check，确认未完成 stmt 初始化则执行初始化操作
 	db.Mux.Lock()
 	if db.Stmts != nil {
 		if stmt, ok := db.Stmts.Get(query); ok && (!stmt.Transaction || isTransaction) {
@@ -110,6 +116,10 @@ func (db *PreparedStmtDB) BeginTx(ctx context.Context, opt *sql.TxOptions) (Conn
 	return nil, ErrInvalidTransaction
 }
 
+// ExecContext
+// 在 prepare 模式下，执行操作通过 PreparedStmtDB.ExecContext(...) 方法实现.
+// 首先通过 PreparedStmtDB.prepare(...) 方法尝试复用 stmt，然后调用 stmt.ExecContext(...) 执行查询操作.
+// 此处 stm.ExecContext(...) 方法本质上会使用 database/sql 中的 sql.Stmt 完成任务.
 func (db *PreparedStmtDB) ExecContext(ctx context.Context, query string, args ...interface{}) (result sql.Result, err error) {
 	stmt, err := db.prepare(ctx, db.ConnPool, false, query)
 	if err == nil {
@@ -121,6 +131,10 @@ func (db *PreparedStmtDB) ExecContext(ctx context.Context, query string, args ..
 	return result, err
 }
 
+// QueryContext
+// 在 prepare 模式下，查询操作通过 PreparedStmtDB.QueryContext(...) 方法实现.
+// 首先通过 PreparedStmtDB.prepare(...) 方法尝试复用 stmt，然后调用 stmt.QueryContext(...) 执行查询操作.
+// 此处 stm.QueryContext(...) 方法本质上会使用 database/sql 中的 sql.Stmt 完成任务.
 func (db *PreparedStmtDB) QueryContext(ctx context.Context, query string, args ...interface{}) (rows *sql.Rows, err error) {
 	stmt, err := db.prepare(ctx, db.ConnPool, false, query)
 	if err == nil {
