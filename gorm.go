@@ -50,6 +50,8 @@ type Config struct {
 	// DisableNestedTransaction disable nested transaction
 	DisableNestedTransaction bool
 	// AllowGlobalUpdate allow global update
+	// 倘若未启用 AllowGlobalUpdate 模式，则会校验使用方是否设置了 where 条件，
+	// 未设置会抛出 gorm.ErrMissingWhereClause 错误（对应 checkMissingWhereConditions() 方法）
 	AllowGlobalUpdate bool
 	// QueryFields executes the SQL query with all fields of the table
 	QueryFields bool
