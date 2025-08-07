@@ -107,6 +107,7 @@ func hasReturning(tx *gorm.DB, supportReturning bool) (bool, gorm.ScanMode) {
 }
 
 func checkMissingWhereConditions(db *gorm.DB) {
+	// 倘若 AllowGlobalUpdate 标识不为 true 且 error 为空，则需要对 where 条件进行校验
 	if !db.AllowGlobalUpdate && db.Error == nil {
 		where, withCondition := db.Statement.Clauses["WHERE"]
 		if withCondition {
