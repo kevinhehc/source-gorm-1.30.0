@@ -58,6 +58,7 @@ type callback struct {
 }
 
 func (cs *callbacks) Create() *processor {
+	// 获取  processor
 	return cs.processors["create"]
 }
 
@@ -83,6 +84,9 @@ func (cs *callbacks) Raw() *processor {
 
 // Execute
 // 通用的 processor 执行函数，其中对应于 crud 的核心操作都被封装在 processor 对应的 fns list 当中了
+// 调用 statement.Build(...) 方法，生成 sql
+// 调用 connPool.ExecContext(...) 方法，请求 mysql 服务端执行 sql（默认情况下，此处会使用 database/sql 标准库的 db.ExecContext(...) 方法）
+// 调用 result.RowsAffected()，获取到本次创建操作影响的数据行数
 func (p *processor) Execute(db *DB) *DB {
 	// call scopes
 	for len(db.Statement.scopes) > 0 {
@@ -142,6 +146,7 @@ func (p *processor) Execute(db *DB) *DB {
 	}
 
 	// 执行一系列的 callback 函数，其中最核心的 create/query/update/delete 操作都被包含在其中了
+	// 核心
 	for _, f := range p.fns {
 		f(db)
 	}

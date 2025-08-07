@@ -16,13 +16,20 @@ import (
 )
 
 // Create inserts value, returning the inserted data's primary key in value's id
+// 通过 db.getInstance() 克隆出一个 DB 会话实例
+// 设置 statement 中的 dest 为用户传入的 dest
+// 获取到 create 类型的 processor
+// 调用 processor 的 Execute 方法，遍历执行 fns 函数链，完成创建操作
 func (db *DB) Create(value interface{}) (tx *DB) {
 	if db.CreateBatchSize > 0 {
 		return db.CreateInBatches(value, db.CreateBatchSize)
 	}
 
+	// 克隆 db 会话实例
 	tx = db.getInstance()
+	// 设置 dest
 	tx.Statement.Dest = value
+	// 执行 create processor
 	return tx.callbacks.Create().Execute(tx)
 }
 
