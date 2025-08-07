@@ -117,6 +117,8 @@ func (db *DB) Save(value interface{}) (tx *DB) {
 }
 
 // First finds the first record ordered by primary key, matching given conditions conds
+// 遵循 First 的语义，通过 limit 和 order 追加 clause，限制只取满足条件且主键最小的一笔数据
+// 追加用户传入的一系列 condition，进行 clause 追加
 func (db *DB) First(dest interface{}, conds ...interface{}) (tx *DB) {
 	tx = db.Limit(1).Order(clause.OrderByColumn{
 		Column: clause.Column{Table: clause.CurrentTable, Name: clause.PrimaryKey},
@@ -126,7 +128,9 @@ func (db *DB) First(dest interface{}, conds ...interface{}) (tx *DB) {
 			tx.Statement.AddClause(clause.Where{Exprs: exprs})
 		}
 	}
+	// 设置 RaiseErrorOnNotFound 标识为 true，倘若未找到记录，则会抛出 ErrRecordNotFound 错误
 	tx.Statement.RaiseErrorOnNotFound = true
+	// 设置 statement 中的 dest 为用户传入的 dest，作为反序列化响应结果的对象实例
 	tx.Statement.Dest = dest
 	return tx.callbacks.Query().Execute(tx)
 }
